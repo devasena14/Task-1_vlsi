@@ -1,0 +1,141 @@
+`timescale 1ns / 1ps
+
+module traffic_signal_controller (
+    input  wire clk,
+    input  wire reset,
+    input  wire emergency,
+
+    output reg north_red,
+    output reg north_yellow,
+    output reg north_green,
+
+    output reg east_red,
+    output reg east_yellow,
+    output reg east_green
+);
+
+    localparam NS_GREEN  = 3'b000;
+    localparam NS_YELLOW = 3'b001;
+    localparam EW_GREEN  = 3'b010;
+    localparam EW_YELLOW = 3'b011;
+    localparam EMERGENCY = 3'b100;
+
+    reg [2:0] state;
+    reg [3:0] counter;
+
+    // Small value for simulation
+    localparam TIME_COUNT = 4'd10;
+
+    // FSM
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            state   <= NS_GREEN;
+            counter <= 4'd0;
+        end
+        else if (emergency) begin
+            state   <= EMERGENCY;
+            counter <= 4'd0;
+        end
+        else begin
+            case (state)
+
+                NS_GREEN: begin
+                    if (counter == TIME_COUNT - 1) begin
+                        state <= NS_YELLOW;
+                        counter <= 4'd0;
+                    end
+                    else
+                        counter <= counter + 1'b1;
+                end
+
+                NS_YELLOW: begin
+                    if (counter == TIME_COUNT - 1) begin
+                        state <= EW_GREEN;
+                        counter <= 4'd0;
+                    end
+                    else
+                        counter <= counter + 1'b1;
+                end
+
+                EW_GREEN: begin
+                    if (counter == TIME_COUNT - 1) begin
+                        state <= EW_YELLOW;
+                        counter <= 4'd0;
+                    end
+                    else
+                        counter <= counter + 1'b1;
+                end
+
+                EW_YELLOW: begin
+                    if (counter == TIME_COUNT - 1) begin
+                        state <= NS_GREEN;
+                        counter <= 4'd0;
+                    end
+                    else
+                        counter <= counter + 1'b1;
+                end
+
+                EMERGENCY: begin
+                    if (!emergency) begin
+                        state <= NS_GREEN;
+                        counter <= 4'd0;
+                    end
+                end
+
+                default: begin
+                    state <= NS_GREEN;
+                    counter <= 4'd0;
+                end
+
+            endcase
+        end
+    end
+
+    // Output logic
+    always @(*) begin
+
+        // Default: all OFF
+        north_red    = 1'b0;
+        north_yellow = 1'b0;
+        north_green  = 1'b0;
+
+        east_red     = 1'b0;
+        east_yellow  = 1'b0;
+        east_green   = 1'b0;
+
+        case (state)
+
+            NS_GREEN: begin
+                north_green = 1'b1;
+                east_red = 1'b1;
+            end
+
+            NS_YELLOW: begin
+                north_yellow = 1'b1;
+                east_red = 1'b1;
+            end
+
+            EW_GREEN: begin
+                north_red = 1'b1;
+                east_green = 1'b1;
+            end
+
+            EW_YELLOW: begin
+                north_red = 1'b1;
+                east_yellow = 1'b1;
+            end
+
+            EMERGENCY: begin
+                north_green = 1'b1;
+                east_red = 1'b1;
+            end
+
+            default: begin
+                north_red = 1'b1;
+                east_red = 1'b1;
+            end
+
+        endcase
+    end
+
+endmodule
